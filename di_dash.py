@@ -35,14 +35,36 @@ def calculate_variation(df_final, df_initial):
     return df
 
 
+# Set the page layout and add custom CSS
+st.set_page_config(layout="wide")
+
+# Set the page layout and add custom CSS to remove extra space
+
+st.markdown(
+    """
+    <style>
+    .css-18e3th9 {
+        padding-top: 0rem;
+        padding-bottom: 0rem;
+    }
+    .css-1d391kg {
+        padding-top: 0rem;
+        padding-bottom: 0rem;
+    }
+    .css-1v3fvcr {
+        padding-top: 0rem;
+        padding-bottom: 0rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 today = dt.date.today()
 last_bday = yd.bday.offset(today, 0, roll="backward")
 
 default_start_date = yd.bday.offset(last_bday, -1)
 default_final_date = last_bday
 
-# Streamlit app
-st.set_page_config(layout="wide")
 st.title("Painel Futuro de DI")
 
 # Inputs para selecionar as datas inicial e final
@@ -89,7 +111,7 @@ fig_bar.add_trace(
     )
 )
 fig_bar.update_layout(
-    title="Variação de taxa nos vértices de emissão de NTN-F e LTN",
+    title="Variação de taxa nos vértices de emissão de LTN e NTN-F",
     xaxis_title="Data de Expiração",
     yaxis_title="Variação (bps)",
     width=800,  # largura do gráfico
@@ -104,7 +126,7 @@ fig_line.add_trace(
         x=df_start["ExpirationDate"],
         y=df_start["DIRate"] * 100,
         mode="lines",
-        name=f"Curva em {start_date}",
+        name=f"Curva em {start_date.strftime('%d/%m/%Y')}",
         line=dict(color="black", dash="dash"),
     )
 )
@@ -113,7 +135,7 @@ fig_line.add_trace(
         x=df_final["ExpirationDate"],
         y=df_final["DIRate"] * 100,
         mode="lines",
-        name=f"Curva em {final_date}",
+        name=f"Curva em {final_date.strftime('%d/%m/%Y')}",
         line=dict(color="black"),
     )
 )
