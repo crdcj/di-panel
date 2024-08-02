@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Streamlit",
+        "type": "debugpy",
+        "request": "launch",
+        "program": "${workspaceFolder}/.venv/bin/streamlit",
+        "args": [
+          "run",
+          "${workspaceFolder}/di_dash.py"
+        ],
+        "console": "integratedTerminal",
+        "justMyCode": true
+      }
+    ]
+  }
+  

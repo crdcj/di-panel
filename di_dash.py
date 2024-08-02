@@ -5,6 +5,10 @@ import plotly.graph_objs as go
 import pyield as yd
 import streamlit as st
 
+# Streamlit app
+st.set_page_config(layout="wide")
+st.title("Painel Futuro de DI")
+
 
 def format_di_dataframe(df, pre_maturities):
     """Rename columns of DI rate DataFrame"""
@@ -41,10 +45,6 @@ last_bday = yd.bday.offset(today, 0, roll="backward")
 default_start_date = yd.bday.offset(last_bday, -1)
 default_final_date = last_bday
 
-# Set the page layout and add custom CSS
-st.set_page_config(layout="wide")
-
-st.title("Painel Futuro de DI")
 
 # Inputs para selecionar as datas inicial e final
 col1, col2 = st.columns(2)
@@ -71,63 +71,74 @@ ltn_maturities = yd.ltn.anbima_rates(reference_date=anbima_date).index.to_list()
 ntnf_maturities = yd.ntnf.anbima_rates(reference_date=anbima_date).index.to_list()
 pre_maturities = ltn_maturities + ntnf_maturities
 
-df_final = yd.futures(contract_code="DI1", reference_date=final_date)
-df_final = format_di_dataframe(df_final, pre_maturities)
-
 df_start = yd.futures(contract_code="DI1", reference_date=start_date)
 df_start = format_di_dataframe(df_start, pre_maturities)
 
-df_var = calculate_variation(df_final, df_start)
 
-# Gráfico de barras para variação
-fig_bar = go.Figure()
-fig_bar.add_trace(
-    go.Bar(
-        x=df_var["ExpirationDate"],
-        y=df_var["Variation"],
-        name="Variação (bps)",
-        marker_color="gray",
-    )
-)
-fig_bar.update_layout(
-    title="Variação de taxa nos vértices de emissão de LTN e NTN-F",
-    xaxis_title="Data de Expiração",
-    yaxis_title="Variação (bps)",
-    width=800,  # largura do gráfico
-    height=300,  # altura do gráfico
-    margin=dict(l=20, r=20, t=50, b=20),  # Ajustar margens
-)
+@st.fragment(run_every="10s")
+def auto_function():
+    if final_date != today:
+        return
+    # Atualize o DI da data final apenas quando a data final for hoje
+    df_final = yd.futures(contract_code="DI1", reference_date=final_date)
+    df_final = format_di_dataframe(df_final, pre_maturities)
 
-# Gráfico de linha para curva de juros
-fig_line = go.Figure()
-fig_line.add_trace(
-    go.Scatter(
-        x=df_start["ExpirationDate"],
-        y=df_start["DIRate"] * 100,
-        mode="lines",
-        name=f"Curva em {start_date.strftime('%d/%m/%Y')}",
-        line=dict(color="black", dash="dash"),
-    )
-)
-fig_line.add_trace(
-    go.Scatter(
-        x=df_final["ExpirationDate"],
-        y=df_final["DIRate"] * 100,
-        mode="lines",
-        name=f"Curva em {final_date.strftime('%d/%m/%Y')}",
-        line=dict(color="black"),
-    )
-)
-fig_line.update_layout(
-    title="Curva de Juros nas datas selecionadas",
-    xaxis_title="Data de Expiração",
-    yaxis_title="Taxa de Juros (%)",
-    width=800,  # largura do gráfico
-    height=300,  # altura do gráfico
-    margin=dict(l=20, r=20, t=50, b=20),  # Ajustar margens
-    legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5),
-)
+    df_var = calculate_variation(df_final, df_start)
 
-# Exibir os gráficos no Streamlit
-st.plotly_chart(fig_bar, use_container_width=True)
-st.plotly_chart(fig_line, use_container_width=True)
+    # Gráfico de barras para variação
+    fig_bar = go.Figure()
+    fig_bar.add_trace(
+        go.Bar(
+            x=df_var["ExpirationDate"],
+            y=df_var["Variation"],
+            name="Variação (bps)",
+            marker_color="gray",
+        )
+    )
+    fig_bar.update_layout(
+        title="Variação da Taxa de Ajuste",
+        xaxis_title="Data de Expiração",
+        yaxis_title="Variação (bps)",
+        width=800,  # largura do gráfico
+        height=300,  # altura do gráfico
+        margin=dict(l=10, r=10, t=20, b=20),  # Ajustar margens
+        xaxis=dict(showgrid=True, tickformat="%Y", dtick="M12"),
+    )
+
+    # Gráfico de linha para curva de juros
+    fig_line = go.Figure()
+    fig_line.add_trace(
+        go.Scatter(
+            x=df_start["ExpirationDate"],
+            y=df_start["DIRate"] * 100,
+            mode="lines",
+            name=f"Curva em {start_date.strftime('%d/%m/%Y')}",
+            line=dict(color="gray", dash="dash"),
+        )
+    )
+    fig_line.add_trace(
+        go.Scatter(
+            x=df_final["ExpirationDate"],
+            y=df_final["DIRate"] * 100,
+            mode="lines",
+            name=f"Curva em {final_date.strftime('%d/%m/%Y')}",
+            line=dict(color="gray"),
+        )
+    )
+    fig_line.update_layout(
+        title="Curva de Juros",
+        xaxis_title="Data de Expiração",
+        yaxis_title="Taxa de Juros (%)",
+        width=800,  # largura do gráfico
+        height=300,  # altura do gráfico
+        margin=dict(l=10, r=10, t=20, b=10),  # Ajustar margens
+        legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5),
+        xaxis=dict(showgrid=True, tickformat="%Y", dtick="M12"),
+    )
+
+    # Exibir os gráficos no Streamlit
+    st.plotly_chart(fig_bar, use_container_width=True)
+    st.plotly_chart(fig_line, use_container_width=True)
+
+
+auto_function()
