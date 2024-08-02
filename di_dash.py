@@ -6,7 +6,25 @@ import pyield as yd
 import streamlit as st
 
 # Streamlit app
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide", page_title="Painel DI")
+
+st.markdown(
+    """
+<style>
+
+.block-container
+{
+    padding-top: 1rem;
+    padding-bottom: 0rem;
+    margin-top: 1rem;
+}
+
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+
 st.title("Painel Futuro de DI")
 
 
@@ -99,9 +117,9 @@ def auto_function():
         title="Variação da Taxa de Ajuste",
         xaxis_title="Data de Expiração",
         yaxis_title="Variação (bps)",
-        width=800,  # largura do gráfico
+        # width=800,  # largura do gráfico
         height=300,  # altura do gráfico
-        margin=dict(l=10, r=10, t=20, b=20),  # Ajustar margens
+        margin=dict(l=10, r=10, t=20, b=0),  # Ajustar margens
         xaxis=dict(showgrid=True, tickformat="%Y", dtick="M12"),
     )
 
@@ -129,10 +147,10 @@ def auto_function():
         title="Curva de Juros",
         xaxis_title="Data de Expiração",
         yaxis_title="Taxa de Juros (%)",
-        width=800,  # largura do gráfico
+        # width=800,  # largura do gráfico
         height=300,  # altura do gráfico
-        margin=dict(l=10, r=10, t=20, b=10),  # Ajustar margens
-        legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5),
+        margin=dict(l=10, r=10, t=20, b=0),  # Ajustar margens
+        legend=dict(orientation="h", yanchor="bottom", y=-1, xanchor="center", x=0.5),
         xaxis=dict(showgrid=True, tickformat="%Y", dtick="M12"),
     )
 
@@ -142,3 +160,12 @@ def auto_function():
 
 
 auto_function()
+st.markdown(
+    """
+    ---
+    <p style='font-size:10px;'>
+    Nota: Dados filtrados para os vértices de emissão de LTN e NTN-F.
+    </p>
+    """,
+    unsafe_allow_html=True,
+)
