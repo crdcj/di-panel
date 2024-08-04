@@ -93,10 +93,7 @@ df_start = yd.futures(contract_code="DI1", reference_date=start_date)
 df_start = format_di_dataframe(df_start, pre_maturities)
 
 
-@st.fragment(run_every="10s")
 def auto_function():
-    if final_date != today:
-        return
     # Atualize o DI da data final apenas quando a data final for hoje
     df_final = yd.futures(contract_code="DI1", reference_date=final_date)
     df_final = format_di_dataframe(df_final, pre_maturities)
@@ -119,7 +116,7 @@ def auto_function():
         yaxis_title="Variação (bps)",
         # width=800,  # largura do gráfico
         height=300,  # altura do gráfico
-        margin=dict(l=10, r=10, t=20, b=0),  # Ajustar margens
+        margin=dict(l=10, r=10, t=30, b=0),  # Ajustar margens
         xaxis=dict(showgrid=True, tickformat="%Y", dtick="M12"),
     )
 
@@ -149,7 +146,7 @@ def auto_function():
         yaxis_title="Taxa de Juros (%)",
         # width=800,  # largura do gráfico
         height=300,  # altura do gráfico
-        margin=dict(l=10, r=10, t=20, b=0),  # Ajustar margens
+        margin=dict(l=10, r=10, t=30, b=0),  # Ajustar margens
         legend=dict(orientation="h", yanchor="bottom", y=-1, xanchor="center", x=0.5),
         xaxis=dict(showgrid=True, tickformat="%Y", dtick="M12"),
     )
@@ -159,7 +156,18 @@ def auto_function():
     st.plotly_chart(fig_line, use_container_width=True)
 
 
+# Executa auto_function uma vez no carregamento
 auto_function()
+
+# Condicional para execução periódica se final_date for today
+if final_date == today:
+
+    @st.fragment(run_every="10s")
+    def periodic_auto_function():
+        auto_function()
+
+    periodic_auto_function()
+
 st.markdown(
     """
     ---
