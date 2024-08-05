@@ -166,9 +166,6 @@ df_start = yd.futures(contract_code="DI1", reference_date=start_date)
 df_start = format_di_dataframe(df_start, pre_maturities)
 
 
-# Executa auto_function uma vez no carregamento
-plot_graphs()
-
 # Condicional para execução periódica se final_date for today
 if final_date == today:
 
@@ -177,6 +174,8 @@ if final_date == today:
         plot_graphs()
 
     periodic_plotter()
+else:
+    plot_graphs()
 
 st.markdown(
     """
