@@ -10,25 +10,30 @@ from zoneinfo import ZoneInfo
 DATE_FORMAT = "%d/%m/%Y"
 GRAPH_HEIGHT = 300
 BZ_TIMEZONE = ZoneInfo("America/Sao_Paulo")
+REALTIME_UPDATE_INTERVAL = "10s"
+REALTIME_START_TIME = dt.time(9, 15)
+
 # Streamlit app
 st.set_page_config(layout="wide", page_title="Painel DI")
 
 st.markdown(
     """
 <style>
-
-.block-container
-{
+.block-container {
     padding-top: 1rem;
     padding-bottom: 0rem;
     margin-top: 1rem;
 }
-
+.css-1d391kg {
+    margin-bottom: 0 !important;
+}
+.css-1qpcgxx.e1tzin5v0 {
+    margin-top: 0 !important;
+}
 </style>
 """,
     unsafe_allow_html=True,
 )
-
 
 st.title("Painel Futuro de DI")
 
@@ -112,7 +117,7 @@ def plot_interest_curve(df_start, df_final, start_date, final_date):
         yaxis_title="Taxa de Juros (%)",
         height=GRAPH_HEIGHT,
         margin=dict(l=10, r=10, t=30, b=0),
-        legend=dict(orientation="h", yanchor="bottom", y=-1, xanchor="center", x=0.5),
+        legend=dict(orientation="h", yanchor="bottom", y=-0.4, xanchor="center", x=0.5),
         xaxis=dict(showgrid=True, tickformat="%Y", dtick="M12"),
     )
     return fig_line
@@ -137,12 +142,15 @@ bz_now = dt.datetime.now(BZ_TIMEZONE)
 bz_today = bz_now.date()
 last_bday = yd.bday.offset(bz_today, 0, roll="backward")
 
-default_start_date = yd.bday.offset(last_bday, -1)
-default_final_date = last_bday
+if bz_now.time() < REALTIME_START_TIME:
+    default_final_date = yd.bday.offset(last_bday, -1)
+else:
+    default_final_date = last_bday
 
+default_start_date = yd.bday.offset(default_final_date, -1)
 
 # Inputs para selecionar as datas inicial e final
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns([1, 1, 1])
 
 with col1:
     start_date = st.date_input("Selecione a data inicial", value=default_start_date)
@@ -151,9 +159,9 @@ with col2:
     final_date = st.date_input("Selecione a data final", value=default_final_date)
 
 num_bdays = yd.bday.count(start_date, final_date)
-
-# Mostrar o número de dias úteis entre as datas selecionadas
-st.write(f"Número de dias úteis entre as datas: {num_bdays} dias")
+with col3:
+    # Mostrar o número de dias úteis entre as datas selecionadas
+    st.metric("Número de dias úteis entre as datas", value=f"{num_bdays}")
 
 # Get NTN-F and LTN maturities
 if final_date == bz_today:
@@ -175,7 +183,7 @@ has_no_settlement_in_df_final = "SettlementRate" not in df_final.columns
 # Condicional para atualização periódica dos gráficos
 if final_date == bz_today and has_no_settlement_in_df_final:
 
-    @st.fragment(run_every="10s")
+    @st.fragment(run_every=REALTIME_UPDATE_INTERVAL)
     def periodic_plotter():
         plot_graphs()
 
@@ -184,8 +192,7 @@ else:
     plot_graphs()
 
 st.markdown(
-    """
-    ---
+    """    
     <p style='font-size:10px;'>
     Nota: Dados filtrados para os vértices de emissão de LTN e NTN-F.
     </p>
