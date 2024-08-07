@@ -178,10 +178,10 @@ df_start = yd.futures(contract_code="DI1", reference_date=start_date)
 df_start = format_di_dataframe(df_start, pre_maturities)
 
 df_final = yd.futures(contract_code="DI1", reference_date=final_date)
-has_no_settlement_in_df_final = "SettlementRate" not in df_final.columns
+has_realtime_data = "SettlementRate" not in df_final.columns
 
 # Condicional para atualização periódica dos gráficos
-if final_date == bz_today and has_no_settlement_in_df_final:
+if final_date == bz_today and has_realtime_data:
 
     @st.fragment(run_every=REALTIME_UPDATE_INTERVAL)
     def periodic_plotter():
