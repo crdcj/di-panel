@@ -4,10 +4,12 @@ import pandas as pd
 import plotly.graph_objs as go
 import pyield as yd
 import streamlit as st
+from zoneinfo import ZoneInfo
 
 # Constantes
 DATE_FORMAT = "%d/%m/%Y"
 GRAPH_HEIGHT = 300
+BZ_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 # Streamlit app
 st.set_page_config(layout="wide", page_title="Painel DI")
 
@@ -130,8 +132,10 @@ def plot_graphs():
     st.plotly_chart(fig_line, use_container_width=True)
 
 
-today = dt.date.today()
-last_bday = yd.bday.offset(today, 0, roll="backward")
+# Ajuste o horário para o fuso horário do Brasil
+bz_now = dt.datetime.now(BZ_TIMEZONE)
+bz_today = bz_now.date()
+last_bday = yd.bday.offset(bz_today, 0, roll="backward")
 
 default_start_date = yd.bday.offset(last_bday, -1)
 default_final_date = last_bday
@@ -152,9 +156,9 @@ num_bdays = yd.bday.count(start_date, final_date)
 st.write(f"Número de dias úteis entre as datas: {num_bdays} dias")
 
 # Get NTN-F and LTN maturities
-if final_date == today:
+if final_date == bz_today:
     # If date1 is today, we need to get the Anbima data from previous business day
-    anbima_date = yd.bday.offset(today, -1)
+    anbima_date = yd.bday.offset(bz_today, -1)
 else:
     anbima_date = final_date
 
@@ -165,9 +169,11 @@ pre_maturities = ltn_maturities + ntnf_maturities
 df_start = yd.futures(contract_code="DI1", reference_date=start_date)
 df_start = format_di_dataframe(df_start, pre_maturities)
 
+df_final = yd.futures(contract_code="DI1", reference_date=final_date)
+has_no_settlement_in_df_final = "SettlementRate" not in df_final.columns
 
-# Condicional para execução periódica se final_date for today
-if final_date == today:
+# Condicional para atualização periódica dos gráficos
+if final_date == bz_today and has_no_settlement_in_df_final:
 
     @st.fragment(run_every="10s")
     def periodic_plotter():
