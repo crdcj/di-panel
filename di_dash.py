@@ -12,6 +12,8 @@ GRAPH_HEIGHT = 300
 BZ_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 REALTIME_UPDATE_INTERVAL = "10s"
 REALTIME_START_TIME = dt.time(9, 15)
+PYIELD_DATA_URL = "https://raw.githubusercontent.com/crdcj/pyield-data/main/"
+ANBIMA_RATES_URL = f"{PYIELD_DATA_URL}anbima_rates.csv.gz"
 
 # Streamlit app
 st.set_page_config(layout="wide", page_title="Painel DI")
@@ -48,6 +50,7 @@ def format_di_dataframe(df, pre_maturities):
         raise ValueError("DataFrame does not have a column with DI rates")
 
     df["ExpirationDate"] = df["ExpirationDate"].apply(lambda x: x.replace(day=1))
+    df["ExpirationDate"] = df["ExpirationDate"].dt.date
 
     df.query("ExpirationDate in @pre_maturities", inplace=True)
     return df
@@ -76,7 +79,7 @@ def plot_rate_variation(df_var):
             x=df_var["ExpirationDate"],
             y=df_var["Variation"],
             name="Variação (bps)",
-            marker_color="gray",
+            # marker_color="gray",
         )
     )
     fig_bar.update_layout(
@@ -108,7 +111,7 @@ def plot_interest_curve(df_start, df_final, start_date, final_date):
             y=df_final["DIRate"] * 100,
             mode="lines",
             name=f"Curva em {final_date.strftime(DATE_FORMAT)}",
-            line=dict(color="gray"),
+            # line=dict(color="gray"),
         )
     )
     fig_line.update_layout(
@@ -135,6 +138,15 @@ def plot_graphs():
     # Exibir os gráficos no Streamlit
     st.plotly_chart(fig_bar, use_container_width=True)
     st.plotly_chart(fig_line, use_container_width=True)
+
+
+@st.cache_data(ttl=28800)  # 8 horas de cache
+def load_anbima_rates() -> pd.DataFrame:
+    df = pd.read_csv(ANBIMA_RATES_URL, parse_dates=["ReferenceDate", "MaturityDate"])
+    # Convert columns to datetime.date
+    df["ReferenceDate"] = df["ReferenceDate"].dt.date
+    df["MaturityDate"] = df["MaturityDate"].dt.date
+    return df
 
 
 # Ajuste o horário para o fuso horário do Brasil
@@ -170,9 +182,9 @@ if final_date == bz_today:
 else:
     anbima_date = final_date
 
-ltn_maturities = yd.ltn.anbima_rates(reference_date=anbima_date).index.to_list()
-ntnf_maturities = yd.ntnf.anbima_rates(reference_date=anbima_date).index.to_list()
-pre_maturities = ltn_maturities + ntnf_maturities
+pre_rates = load_anbima_rates().query("ReferenceDate == @anbima_date").copy()
+pre_rates.query("BondType in ['LTN', 'NTN-F']", inplace=True)
+pre_maturities = pre_rates["MaturityDate"]
 
 df_start = yd.futures(contract_code="DI1", reference_date=start_date)
 df_start = format_di_dataframe(df_start, pre_maturities)
