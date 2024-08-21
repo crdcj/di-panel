@@ -13,7 +13,7 @@ BZ_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 REALTIME_UPDATE_INTERVAL = "10s"
 REALTIME_START_TIME = dt.time(9, 15)
 PYIELD_DATA_URL = "https://raw.githubusercontent.com/crdcj/pyield-data/main/"
-ANBIMA_RATES_URL = f"{PYIELD_DATA_URL}anbima_rates.csv.gz"
+ANBIMA_RATES_URL = f"{PYIELD_DATA_URL}anbima_rates.parquet"
 
 # Streamlit app
 st.set_page_config(layout="wide", page_title="Painel DI")
@@ -142,7 +142,7 @@ def plot_graphs():
 
 @st.cache_data(ttl=28800)  # 8 horas de cache
 def load_anbima_rates() -> pd.DataFrame:
-    df = pd.read_csv(ANBIMA_RATES_URL, parse_dates=["ReferenceDate", "MaturityDate"])
+    df = pd.read_parquet(ANBIMA_RATES_URL)
     # Convert columns to datetime.date
     df["ReferenceDate"] = df["ReferenceDate"].dt.date
     df["MaturityDate"] = df["MaturityDate"].dt.date
