@@ -12,8 +12,6 @@ GRAPH_HEIGHT = 300
 BZ_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 REALTIME_UPDATE_INTERVAL = "10s"
 REALTIME_START_TIME = dt.time(9, 15)
-PYIELD_DATA_URL = "https://raw.githubusercontent.com/crdcj/pyield-data/main/"
-ANBIMA_RATES_URL = f"{PYIELD_DATA_URL}anbima_rates.parquet"
 
 # Streamlit app
 st.set_page_config(layout="wide", page_title="Painel DI")
@@ -40,7 +38,8 @@ st.markdown(
 st.title("Painel Futuro de DI")
 
 
-def format_di_dataframe(df, pre_maturities):
+def format_di_dataframe(df_input, pre_maturities):
+    df = df_input.copy()
     """Rename columns of DI rate DataFrame"""
     if "SettlementRate" in df.columns:
         df.rename(columns={"SettlementRate": "DIRate"}, inplace=True)
@@ -49,10 +48,10 @@ def format_di_dataframe(df, pre_maturities):
     else:
         raise ValueError("DataFrame does not have a column with DI rates")
 
+    df.query("ExpirationDate in @pre_maturities", inplace=True)
     df["ExpirationDate"] = df["ExpirationDate"].apply(lambda x: x.replace(day=1))
     df["ExpirationDate"] = df["ExpirationDate"].dt.date
 
-    df.query("ExpirationDate in @pre_maturities", inplace=True)
     return df
 
 
@@ -128,7 +127,7 @@ def plot_interest_curve(df_start, df_final, start_date, final_date):
 
 def plot_graphs():
     # Atualize o DI da data final apenas quando a data final for hoje
-    df_final = yd.futures(contract_code="DI1", reference_date=final_date)
+    df_final = yd.futures(contract_code="DI1", trade_date=final_date)
     df_final = format_di_dataframe(df_final, pre_maturities)
 
     df_var = calculate_variation(df_final, df_start)
@@ -138,15 +137,6 @@ def plot_graphs():
     # Exibir os gráficos no Streamlit
     st.plotly_chart(fig_bar, use_container_width=True)
     st.plotly_chart(fig_line, use_container_width=True)
-
-
-@st.cache_data(ttl=28800)  # 8 horas de cache
-def load_anbima_rates() -> pd.DataFrame:
-    df = pd.read_parquet(ANBIMA_RATES_URL)
-    # Convert columns to datetime.date
-    df["ReferenceDate"] = df["ReferenceDate"].dt.date
-    df["MaturityDate"] = df["MaturityDate"].dt.date
-    return df
 
 
 # Ajuste o horário para o fuso horário do Brasil
@@ -165,10 +155,18 @@ default_start_date = yd.bday.offset(default_final_date, -1)
 col1, col2, col3 = st.columns([1, 1, 1])
 
 with col1:
-    start_date = st.date_input("Selecione a data inicial", value=default_start_date)
+    start_date = st.date_input(
+        "Selecione a data inicial",
+        value=default_start_date,
+        max_value=default_start_date,
+    )
 
 with col2:
-    final_date = st.date_input("Selecione a data final", value=default_final_date)
+    final_date = st.date_input(
+        "Selecione a data final",
+        value=default_final_date,
+        max_value=default_final_date,
+    )
 
 num_bdays = yd.bday.count(start_date, final_date)
 with col3:
@@ -177,19 +175,24 @@ with col3:
 
 # Get NTN-F and LTN maturities
 if final_date == bz_today:
-    # If date1 is today, we need to get the Anbima data from previous business day
-    anbima_date = yd.bday.offset(bz_today, -1)
+    # If today, we need to get the pre expirations from previous business day
+    df_di = yd.di.data(
+        trade_date=yd.bday.offset(bz_today, -1),
+        adj_expirations=True,
+        prefixed_filter=True,
+    )
 else:
     anbima_date = final_date
+    df_di = yd.di.data(
+        trade_date=final_date, adj_expirations=True, prefixed_filter=True
+    )
 
-pre_rates = load_anbima_rates().query("ReferenceDate == @anbima_date").copy()
-pre_rates.query("BondType in ['LTN', 'NTN-F']", inplace=True)
-pre_maturities = pre_rates["MaturityDate"]
+pre_maturities = df_di["ExpirationDate"]
 
-df_start = yd.futures(contract_code="DI1", reference_date=start_date)
+df_start = yd.futures(contract_code="DI1", trade_date=start_date)
 df_start = format_di_dataframe(df_start, pre_maturities)
 
-df_final = yd.futures(contract_code="DI1", reference_date=final_date)
+df_final = yd.futures(contract_code="DI1", trade_date=final_date)
 has_realtime_data = "SettlementRate" not in df_final.columns
 
 # Condicional para atualização periódica dos gráficos
