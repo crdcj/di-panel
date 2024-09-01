@@ -38,8 +38,7 @@ st.markdown(
 st.title("Painel Futuro de DI")
 
 
-def format_di_dataframe(df_input, pre_maturities):
-    df = df_input.copy()
+def format_di_dataframe(df):
     """Rename columns of DI rate DataFrame"""
     if "SettlementRate" in df.columns:
         df.rename(columns={"SettlementRate": "DIRate"}, inplace=True)
@@ -48,9 +47,8 @@ def format_di_dataframe(df_input, pre_maturities):
     else:
         raise ValueError("DataFrame does not have a column with DI rates")
 
-    df.query("ExpirationDate in @pre_maturities", inplace=True)
-    df["ExpirationDate"] = df["ExpirationDate"].apply(lambda x: x.replace(day=1))
     df["ExpirationDate"] = df["ExpirationDate"].dt.date
+    df["DIRate"] = df["DIRate"] * 100
 
     return df
 
@@ -64,7 +62,7 @@ def calculate_variation(df_final, df_initial):
         suffixes=("Final", "Initial"),
     )
 
-    df["Variation"] = (df["DIRateFinal"] - df["DIRateInitial"]) * 10_000
+    df["Variation"] = (df["DIRateFinal"] - df["DIRateInitial"]) * 100
 
     return df
 
@@ -98,7 +96,7 @@ def plot_interest_curve(df_start, df_final, start_date, final_date):
     fig_line.add_trace(
         go.Scatter(
             x=df_start["ExpirationDate"],
-            y=df_start["DIRate"] * 100,
+            y=df_start["DIRate"],
             mode="lines",
             name=f"Curva em {start_date.strftime(DATE_FORMAT)}",
             line=dict(color="gray", dash="dash"),
@@ -107,7 +105,7 @@ def plot_interest_curve(df_start, df_final, start_date, final_date):
     fig_line.add_trace(
         go.Scatter(
             x=df_final["ExpirationDate"],
-            y=df_final["DIRate"] * 100,
+            y=df_final["DIRate"],
             mode="lines",
             name=f"Curva em {final_date.strftime(DATE_FORMAT)}",
             # line=dict(color="gray"),
@@ -128,7 +126,7 @@ def plot_interest_curve(df_start, df_final, start_date, final_date):
 def plot_graphs():
     # Atualize o DI da data final apenas quando a data final for hoje
     df_final = yd.futures(contract_code="DI1", trade_date=final_date)
-    df_final = format_di_dataframe(df_final, pre_maturities)
+    df_final = format_di_dataframe(df_final)
 
     df_var = calculate_variation(df_final, df_start)
 
@@ -187,12 +185,11 @@ else:
         trade_date=final_date, adj_expirations=True, prefixed_filter=True
     )
 
-pre_maturities = df_di["ExpirationDate"]
-
 df_start = yd.futures(contract_code="DI1", trade_date=start_date)
-df_start = format_di_dataframe(df_start, pre_maturities)
+df_start = format_di_dataframe(df_start)
 
 df_final = yd.futures(contract_code="DI1", trade_date=final_date)
+df_final = format_di_dataframe(df_final)
 has_realtime_data = "SettlementRate" not in df_final.columns
 
 # Condicional para atualização periódica dos gráficos
