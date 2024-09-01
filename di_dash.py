@@ -13,30 +13,6 @@ BZ_TIMEZONE = ZoneInfo("America/Sao_Paulo")
 REALTIME_UPDATE_INTERVAL = "10s"
 REALTIME_START_TIME = dt.time(9, 15)
 
-# Streamlit app
-st.set_page_config(layout="wide", page_title="Painel DI")
-
-st.markdown(
-    """
-<style>
-.block-container {
-    padding-top: 1rem;
-    padding-bottom: 0rem;
-    margin-top: 1rem;
-}
-.css-1d391kg {
-    margin-bottom: 0 !important;
-}
-.css-1qpcgxx.e1tzin5v0 {
-    margin-top: 0 !important;
-}
-</style>
-""",
-    unsafe_allow_html=True,
-)
-
-st.title("Painel Futuro de DI")
-
 
 def format_di_dataframe(df):
     """Rename columns of DI rate DataFrame"""
@@ -137,6 +113,10 @@ def plot_graphs():
     st.plotly_chart(fig_line, use_container_width=True)
 
 
+# Streamlit app
+st.set_page_config(layout="wide", page_title="Painel DI")
+st.title("Painel Futuro de DI")
+
 # Ajuste o horário para o fuso horário do Brasil
 bz_now = dt.datetime.now(BZ_TIMEZONE)
 bz_today = bz_now.date()
@@ -174,16 +154,10 @@ with col3:
 # Get NTN-F and LTN maturities
 if final_date == bz_today:
     # If today, we need to get the pre expirations from previous business day
-    df_di = yd.di.data(
-        trade_date=yd.bday.offset(bz_today, -1),
-        adj_expirations=True,
-        prefixed_filter=True,
-    )
+    df_di = yd.di.data(trade_date=yd.bday.offset(bz_today, -1), adj_expirations=True)
 else:
     anbima_date = final_date
-    df_di = yd.di.data(
-        trade_date=final_date, adj_expirations=True, prefixed_filter=True
-    )
+    df_di = yd.di.data(trade_date=final_date, adj_expirations=True)
 
 df_start = yd.futures(contract_code="DI1", trade_date=start_date)
 df_start = format_di_dataframe(df_start)
@@ -202,12 +176,3 @@ if final_date == bz_today and has_realtime_data:
     periodic_plotter()
 else:
     plot_graphs()
-
-st.markdown(
-    """    
-    <p style='font-size:10px;'>
-    Nota: Dados filtrados para os vértices de emissão de LTN e NTN-F.
-    </p>
-    """,
-    unsafe_allow_html=True,
-)
