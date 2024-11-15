@@ -1,4 +1,5 @@
 import datetime as dt
+from typing import cast
 
 import pandas as pd
 import plotly.graph_objs as go
@@ -99,10 +100,10 @@ def plot_interest_curve(df_start, df_final, start_date, final_date):
     return fig_line
 
 
-def plot_graphs():
+def plot_graphs(start_date, final_date):
     # Atualize o DI da data final apenas quando a data final for hoje
-    df_final = yd.futures(contract_code="DI1", trade_date=final_date)
-    df_final = format_di_dataframe(df_final)
+    di_final = yd.DIFutures(trade_date=final_date, prefixed_filter=True)
+    df_final = format_di_dataframe(di_final.data)
 
     df_var = calculate_variation(df_final, df_start)
 
@@ -137,6 +138,7 @@ with col1:
         "Selecione a data inicial",
         value=default_start_date,
         max_value=default_start_date,
+        format="DD/MM/YYYY",
     )
 
 with col2:
@@ -144,26 +146,23 @@ with col2:
         "Selecione a data final",
         value=default_final_date,
         max_value=default_final_date,
+        format="DD/MM/YYYY",
     )
 
+start_date = cast(dt.date, start_date)
+final_date = cast(dt.date, final_date)
 num_bdays = yd.bday.count(start_date, final_date)
+
 with col3:
     # Mostrar o número de dias úteis entre as datas selecionadas
     st.metric("Número de dias úteis entre as datas", value=f"{num_bdays}")
 
-# Get NTN-F and LTN maturities
-if final_date == bz_today:
-    # If today, we need to get the pre expirations from previous business day
-    df_di = yd.di.data(trade_date=yd.bday.offset(bz_today, -1), adj_expirations=True)
-else:
-    anbima_date = final_date
-    df_di = yd.di.data(trade_date=final_date, adj_expirations=True)
 
-df_start = yd.futures(contract_code="DI1", trade_date=start_date)
-df_start = format_di_dataframe(df_start)
+di_start = yd.DIFutures(trade_date=start_date, prefixed_filter=True)
+df_start = format_di_dataframe(di_start.data)
 
-df_final = yd.futures(contract_code="DI1", trade_date=final_date)
-df_final = format_di_dataframe(df_final)
+di_final = yd.DIFutures(trade_date=final_date, prefixed_filter=True)
+df_final = format_di_dataframe(di_final.data)
 has_realtime_data = "SettlementRate" not in df_final.columns
 
 # Condicional para atualização periódica dos gráficos
@@ -171,8 +170,8 @@ if final_date == bz_today and has_realtime_data:
 
     @st.fragment(run_every=REALTIME_UPDATE_INTERVAL)
     def periodic_plotter():
-        plot_graphs()
+        plot_graphs(start_date, final_date)
 
     periodic_plotter()
 else:
-    plot_graphs()
+    plot_graphs(start_date, final_date)
